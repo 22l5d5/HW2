@@ -7,7 +7,7 @@
 - 根據提供的 ADT 實現 Polynomial 類，包含 `Term` 類作為其項次表示。
 - 撰寫 C++ 函數以輸入和輸出多項式，需重載 `<<`（輸出）和 `>>`（輸入）運算子。
 - 支援多項式的加法 (`Add`)、乘法 (`Mul`) 和評估 (`Eval`) 操作。
-- 截止日期為 8月1日。
+
 
 ### 1.2 解題策略
 - **類設計**：根據參考資料設計 `Term` 類，包含係數 (`coef`) 和指數 (`exp`)，並作為 `Polynomial` 類的私有成員陣列 (`termArray`) 使用。`Polynomial` 類管理項次數量 (`terms`) 和容量 (`capacity`)。
@@ -19,6 +19,7 @@
 
 ```cpp
 #include <iostream>
+#include <cmath>
 
 class Polynomial; // 前向宣告
 
@@ -31,6 +32,8 @@ private:
     int exp;
 public:
     Term(float c = 0, int e = 0) : coef(c), exp(e) {}
+    float getCoef() const { return coef; }
+    int getExp() const { return exp; }
 };
 
 class Polynomial {
@@ -66,13 +69,13 @@ public:
         Polynomial result(capacity + other.capacity);
         int i = 0, j = 0;
         while (i < terms || j < other.terms) {
-            if (i >= terms) result.newTerm(other.termArray[j].coef, other.termArray[j++].exp);
-            else if (j >= other.terms) result.newTerm(termArray[i].coef, termArray[i++].exp);
-            else if (termArray[i].exp > other.termArray[j].exp) result.newTerm(termArray[i].coef, termArray[i++].exp);
-            else if (termArray[i].exp < other.termArray[j].exp) result.newTerm(other.termArray[j].coef, other.termArray[j++].exp);
+            if (i >= terms) result.newTerm(other.termArray[j].getCoef(), other.termArray[j++].getExp());
+            else if (j >= other.terms) result.newTerm(termArray[i].getCoef(), termArray[i++].getExp());
+            else if (termArray[i].getExp() > other.termArray[j].getExp()) result.newTerm(termArray[i].getCoef(), termArray[i++].getExp());
+            else if (termArray[i].getExp() < other.termArray[j].getExp()) result.newTerm(other.termArray[j].getCoef(), other.termArray[j++].getExp());
             else {
-                float sum = termArray[i].coef + other.termArray[j].coef;
-                if (sum != 0) result.newTerm(sum, termArray[i].exp);
+                float sum = termArray[i].getCoef() + other.termArray[j].getCoef();
+                if (sum != 0) result.newTerm(sum, termArray[i].getExp());
                 i++; j++;
             }
         }
@@ -83,23 +86,23 @@ public:
         Polynomial result(capacity + other.capacity);
         for (int i = 0; i < terms; i++)
             for (int j = 0; j < other.terms; j++)
-                result.newTerm(termArray[i].coef * other.termArray[j].coef, termArray[i].exp + other.termArray[j].exp);
+                result.newTerm(termArray[i].getCoef() * other.termArray[j].getCoef(), termArray[i].getExp() + other.termArray[j].getExp());
         return result;
     }
     // 評估
     float Eval(float x) const {
         float result = 0;
         for (int i = 0; i < terms; i++)
-            result += termArray[i].coef * pow(x, termArray[i].exp);
+            result += termArray[i].getCoef() * std::pow(x, termArray[i].getExp());
         return result;
     }
 };
 
 std::ostream& operator<<(std::ostream& os, const Term& term) {
-    os << term.coef;
-    if (term.exp > 0) {
+    os << term.getCoef();
+    if (term.getExp() > 0) {
         os << "x";
-        if (term.exp > 1) os << "^" << term.exp;
+        if (term.getExp() > 1) os << "^" << term.getExp();
     }
     return os;
 }
@@ -107,8 +110,8 @@ std::ostream& operator<<(std::ostream& os, const Term& term) {
 std::ostream& operator<<(std::ostream& os, const Polynomial& poly) {
     bool first = true;
     for (int i = 0; i < poly.terms; i++) {
-        if (poly.termArray[i].coef != 0) {
-            if (!first && poly.termArray[i].coef > 0) os << "+";
+        if (poly.termArray[i].getCoef() != 0) {
+            if (!first && poly.termArray[i].getCoef() > 0) os << "+";
             os << poly.termArray[i];
             first = false;
         }
@@ -119,7 +122,7 @@ std::ostream& operator<<(std::ostream& os, const Polynomial& poly) {
 }
 
 std::istream& operator>>(std::istream& is, Term& term) {
-    is >> term.coef >> term.exp;
+    is >> term.coef >> term.exp; // 友元函數可直接存取私有成員
     return is;
 }
 
