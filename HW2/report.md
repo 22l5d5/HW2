@@ -192,6 +192,7 @@ int main() {
     std::cout << "在 x = 2 時的評估值: " << p.Eval(2) << std::endl;
     return 0;
 }
+```
 
 ## 測試與驗證
 
