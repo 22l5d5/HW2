@@ -1,19 +1,19 @@
-# Homework 2 Report
+# 51115123
 
 ## 1. 解題說明
 
 ### 1.1 問題描述
-本作業要求實現一個 Polynomial 類，其抽象數據類型 (ADT) 和私有數據成員分別參考 `113-3 HomeWork 2 (0801).ppt` 的圖 1 和圖 2，並結合 `資料結構(一)作業二參考資料.pdf` 的規範。任務包括：
-- 根據提供的 ADT 實現 Polynomial 類，包含 `Term` 類作為其項次表示。
-- 撰寫 C++ 函數以輸入和輸出多項式，需重載 `<<`（輸出）和 `>>`（輸入）運算子。
+本作業要求實現一個 `Polynomial` 類，其抽象數據類型 (ADT) 與私有數據成員參考 `113-3 HomeWork 2 (0801).ppt` 的圖 1 和圖 2，並依據 `資料結構(一)作業二參考資料.pdf` 的規範。任務包括：
+- 根據 ADT 設計 `Polynomial` 類，包含 `Term` 類作為項次表示。
+- 實現輸入和輸出功能，需重載 `<<`（輸出）和 `>>`（輸入）運算子。
 - 支援多項式的加法 (`Add`)、乘法 (`Mul`) 和評估 (`Eval`) 操作。
-
+- 截止日期為 2025年8月1日。
 
 ### 1.2 解題策略
-- **類設計**：根據參考資料設計 `Term` 類，包含係數 (`coef`) 和指數 (`exp`)，並作為 `Polynomial` 類的私有成員陣列 (`termArray`) 使用。`Polynomial` 類管理項次數量 (`terms`) 和容量 (`capacity`)。
-- **輸入輸出實現**：根據 PDF 第 6 頁的建議，實現 `>>` 運算子支援兩種輸入方式：(1) 輸入項數 `n` 後依次輸入每個項的係數和指數；(2) 連續輸入係數和指數直到 EOF。`<<` 運算子格式化輸出多項式。
-- **功能實現**：實現 `Add`、`Mul` 和 `Eval` 方法，分別處理多項式加法、乘法和指定點的評估。
-- **數據結構**：使用動態陣列儲存 `Term` 物件，當容量不足時擴展為兩倍。
+- **類設計**：`Term` 類包含私有成員 `coef`（係數）和 `exp`（指數），通過公開方法 `getCoef()` 和 `getExp()` 存取。`Polynomial` 類使用動態陣列 `termArray` 儲存 `Term` 物件，管理 `terms`（項數）和 `capacity`（容量），並支援正負指數。
+- **輸入輸出實現**：根據 PDF 第 6 頁，`>>` 運算子支援兩種輸入方式：(1) 輸入項數 `n` 後依次輸入係數和指數；(2) 連續輸入係數和指數直到 EOF。`<<` 運算子格式化輸出，處理正負指數。
+- **功能實現**：`Add` 和 `Mul` 通過 `mergeTerms` 合併重複指數，`Eval` 使用 `std::pow` 計算正負指數的貢獻。
+- **數據結構**：動態陣列在容量不足時擴展為兩倍。
 
 ## 2. 程式實作
 
@@ -26,7 +26,6 @@ class Polynomial; // 前向宣告
 class Term {
     friend class Polynomial;
     friend std::ostream& operator<<(std::ostream& os, const Term& term);
-    friend std::istream& operator>>(std::istream& is, Term& term);
 private:
     float coef;
     int exp;
@@ -34,6 +33,7 @@ public:
     Term(float c = 0, int e = 0) : coef(c), exp(e) {}
     float getCoef() const { return coef; }
     int getExp() const { return exp; }
+    void setCoef(float c) { coef = c; }
 };
 
 class Polynomial {
@@ -57,6 +57,26 @@ private:
         if (terms == capacity) resize();
         termArray[terms++] = Term(coef, exp);
     }
+    bool readTerm(std::istream& is, float& coef, int& exp) {
+        bool success = (is >> coef) && (is >> exp);
+        return success && !is.fail();
+    }
+    void mergeTerms() {
+        if (terms <= 1) return;
+        for (int i = 0; i < terms - 1; i++) {
+            for (int j = i + 1; j < terms;) {
+                if (termArray[i].getExp() == termArray[j].getExp()) {
+                    termArray[i].setCoef(termArray[i].getCoef() + termArray[j].getCoef());
+                    for (int k = j; k < terms - 1; k++) {
+                        termArray[k] = termArray[k + 1];
+                    }
+                    terms--;
+                } else {
+                    j++;
+                }
+            }
+        }
+    }
 public:
     Polynomial(int initialCapacity = 2) : capacity(initialCapacity), terms(0) {
         termArray = new Term[capacity];
@@ -69,16 +89,25 @@ public:
         Polynomial result(capacity + other.capacity);
         int i = 0, j = 0;
         while (i < terms || j < other.terms) {
-            if (i >= terms) result.newTerm(other.termArray[j].getCoef(), other.termArray[j++].getExp());
-            else if (j >= other.terms) result.newTerm(termArray[i].getCoef(), termArray[i++].getExp());
-            else if (termArray[i].getExp() > other.termArray[j].getExp()) result.newTerm(termArray[i].getCoef(), termArray[i++].getExp());
-            else if (termArray[i].getExp() < other.termArray[j].getExp()) result.newTerm(other.termArray[j].getCoef(), other.termArray[j++].getExp());
-            else {
+            if (i >= terms) {
+                result.newTerm(other.termArray[j].getCoef(), other.termArray[j].getExp());
+                j++;
+            } else if (j >= other.terms) {
+                result.newTerm(termArray[i].getCoef(), termArray[i].getExp());
+                i++;
+            } else if (termArray[i].getExp() > other.termArray[j].getExp()) {
+                result.newTerm(termArray[i].getCoef(), termArray[i].getExp());
+                i++;
+            } else if (termArray[i].getExp() < other.termArray[j].getExp()) {
+                result.newTerm(other.termArray[j].getCoef(), other.termArray[j].getExp());
+                j++;
+            } else {
                 float sum = termArray[i].getCoef() + other.termArray[j].getCoef();
                 if (sum != 0) result.newTerm(sum, termArray[i].getExp());
                 i++; j++;
             }
         }
+        result.mergeTerms();
         return result;
     }
     // 乘法
@@ -87,22 +116,32 @@ public:
         for (int i = 0; i < terms; i++)
             for (int j = 0; j < other.terms; j++)
                 result.newTerm(termArray[i].getCoef() * other.termArray[j].getCoef(), termArray[i].getExp() + other.termArray[j].getExp());
+        result.mergeTerms();
         return result;
     }
     // 評估
     float Eval(float x) const {
         float result = 0;
-        for (int i = 0; i < terms; i++)
-            result += termArray[i].getCoef() * std::pow(x, termArray[i].getExp());
+        for (int i = 0; i < terms; i++) {
+            if (termArray[i].getExp() >= 0) {
+                result += termArray[i].getCoef() * std::pow(x, termArray[i].getExp());
+            } else {
+                result += termArray[i].getCoef() / std::pow(x, -termArray[i].getExp());
+            }
+        }
         return result;
     }
 };
 
 std::ostream& operator<<(std::ostream& os, const Term& term) {
-    os << term.getCoef();
-    if (term.getExp() > 0) {
-        os << "x";
+    if (term.getCoef() == 0) return os;
+    if (term.getExp() == 0) {
+        os << term.getCoef();
+    } else if (term.getExp() > 0) {
+        os << term.getCoef() << "x";
         if (term.getExp() > 1) os << "^" << term.getExp();
+    } else { // 負指數
+        os << term.getCoef() << "/x^" << -term.getExp();
     }
     return os;
 }
@@ -121,22 +160,19 @@ std::ostream& operator<<(std::ostream& os, const Polynomial& poly) {
     return os;
 }
 
-std::istream& operator>>(std::istream& is, Term& term) {
-    is >> term.coef >> term.exp; // 友元函數可直接存取私有成員
-    return is;
-}
-
 std::istream& operator>>(std::istream& is, Polynomial& poly) {
     int n;
     if (is >> n) {
-        while (n-- && is >> poly.termArray[poly.terms].coef >> poly.termArray[poly.terms].exp) {
-            poly.terms++;
-            if (poly.terms == poly.capacity) poly.resize();
+        float coef;
+        int exp;
+        while (n-- && poly.readTerm(is, coef, exp)) {
+            poly.newTerm(coef, exp);
         }
     } else {
-        while (is >> poly.termArray[poly.terms].coef >> poly.termArray[poly.terms].exp) {
-            poly.terms++;
-            if (poly.terms == poly.capacity) poly.resize();
+        float coef;
+        int exp;
+        while (poly.readTerm(is, coef, exp)) {
+            poly.newTerm(coef, exp);
         }
     }
     return is;
